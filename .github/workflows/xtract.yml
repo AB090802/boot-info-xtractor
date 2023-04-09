@@ -1,4 +1,4 @@
-name: Extract Boot Image Info and Upload to BashUpload
+name: Extract and Upload Boot Image
 
 on:
   push:
@@ -15,20 +15,21 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get -y install curl unzip
+          sudo apt-get -y install curl python python-pip zip
       
-      - name: Download Boot Image
+      - name: Clone Android Image Kitchen
         run: |
-          curl -O https://s3.ap-south-1.amazonaws.com/blob-ap-south-1-ukyez4/sara/be/bea5/bea54e18-cc6f-4049-9cc9-2455af366f1d.bin?response-content-disposition=attachment%3B%20filename%3D%22boot.img%22&response-content-type=&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIA4DM2EY46SOWUMUP4%2F20230409%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Date=20230409T065553Z&X-Amz-SignedHeaders=host&X-Amz-Expires=1800&X-Amz-Signature=ba42a476aa140f8280f553ba99bba3d3bfeddad2bb48fb9bcb528f3ee9812344
+          git clone https://github.com/osm0sis/Android-Image-Kitchen.git
       
-      - name: Extract Boot Image Info
+      - name: Extract Boot Image
         run: |
-          mkdir bootimg
-          unzip -p boot.img > bootimg/bootimg.gz
-          gunzip -c bootimg/bootimg.gz > bootimg/bootimg
-          imginfo bootimg/bootimg > bootimg/info.txt
+          cp https://s3.ap-south-1.amazonaws.com/blob-ap-south-1-ukyez4/sara/be/bea5/bea54e18-cc6f-4049-9cc9-2455af366f1d.bin?response-content-disposition=attachment%3B%20filename%3D%22boot.img%22&response-content-type=&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIA4DM2EY46SOWUMUP4%2F20230409%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Date=20230409T065553Z&X-Amz-SignedHeaders=host&X-Amz-Expires=1800&X-Amz-Signature=ba42a476aa140f8280f553ba99bba3d3bfeddad2bb48fb9bcb528f3ee9812344 .
+          python Android-Image-Kitchen/unpackimg.py boot.img
       
-      - name: Upload Info to BashUpload
+      - name: Upload Extracted Files to BashUpload
         run: |
-          response=$(curl -X POST -H "Content-Type: text/plain" --data-binary @bootimg/info.txt https://bashupload.com/upload)
+          cd ramdisk
+          zip -r ../bootimg.zip .
+          cd ..
+          response=$(curl -X POST -F "file=@bootimg.zip" https://bashupload.com/upload)
           echo "Download link: $response"
