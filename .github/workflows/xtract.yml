@@ -1,23 +1,39 @@
-name: Extract boot.img info and upload to bashupload
-
+name: Extract boot.img info and upload to bashupload.com
 on:
   push:
     branches:
       - main
-
 jobs:
-  extract-and-upload:
+  extract-boot-info:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-
-    - name: Download boot.img and extract information
-      run: |
-        wget -qO- <https://s3.ap-south-1.amazonaws.com/blob-ap-south-1-ukyez4/sara/be/bea5/bea54e18-cc6f-4049-9cc9-2455af366f1d.bin?response-content-disposition=attachment%3B%20filename%3D%22boot.img%22&response-content-type=&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIA4DM2EY46SOWUMUP4%2F20230409%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Date=20230409T065553Z&X-Amz-SignedHeaders=host&X-Amz-Expires=1800&X-Amz-Signature=ba42a476aa140f8280f553ba99bba3d3bfeddad2bb48fb9bcb528f3ee9812344 | strings > boot_info.txt
-
-    - name: Upload boot info file to bashupload
-      run: |
-        upload_url=$(curl -s -X POST bashupload.com -H "Max-Downloads: 1" -H "Max-Days: 3" -H "Upload-Key: ${{ secrets.BASHUPLOAD_API_KEY }}" -T boot_info.txt)
-        echo "Boot info file uploaded to: $upload_url"
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl git
+          git clone https://github.com/osm0sis/Android-Image-Kitchen.git
+          cd Android-Image-Kitchen
+          git submodule init
+          git submodule update
+          cd bin
+          make
+        working-directory: ./Android-Image-Kitchen
+      - name: Download and extract boot.img
+        run: |
+          curl -O ${{ secrets.https://s3.ap-south-1.amazonaws.com/blob-ap-south-1-ukyez4/sara/be/bea5/bea54e18-cc6f-4049-9cc9-2455af366f1d.bin?response-content-disposition=attachment%3B%20filename%3D%22boot.img%22&response-content-type=&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIA4DM2EY46SOWUMUP4%2F20230409%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Date=20230409T065553Z&X-Amz-SignedHeaders=host&X-Amz-Expires=1800&X-Amz-Signature=ba42a476aa140f8280f553ba99bba3d3bfeddad2bb48fb9bcb528f3ee9812344 }}
+          ./bin/unpackbootimg -i boot.img
+        working-directory: ./Android-Image-Kitchen
+      - name: Save boot info to file
+        run: |
+          mv boot.img-info.txt boot_info.txt
+        working-directory: ./Android-Image-Kitchen
+      - name: Upload boot info to bashupload.com
+        id: upload-boot-info
+        uses: wei/curl@v1
+        with:
+          args: https://bashupload.com/ -T ./Android-Image-Kitchen/boot_info.txt
+      - name: Get upload URL
+        run: |
+          echo "Boot info file uploaded to: ${{ steps.upload-boot-info.outputs.response }}"
