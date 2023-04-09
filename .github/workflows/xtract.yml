@@ -14,7 +14,7 @@ jobs:
 
       - name: Download Boot Image
         run: |
-          wget -O boot.img ${{ https://oshi.at/KHSs }}
+          wget -O boot.img ${{ https://s3.ap-south-1.amazonaws.com/blob-ap-south-1-ukyez4/sara/49/4917/4917728e-8854-46b6-a273-002a630a3642.bin?response-content-disposition=attachment%3B%20filename%3D%22boot.img%22&response-content-type=&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIA4DM2EY46SOWUMUP4%2F20230409%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Date=20230409T074047Z&X-Amz-SignedHeaders=host&X-Amz-Expires=1800&X-Amz-Signature=d62157737c1443ab3e827969d9db6ae075e2790ed0ee3ddbcb815be5ae6695bf }}
           ls -lah boot.img
 
       - name: Install simg2img tool
