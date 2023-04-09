@@ -1,32 +1,33 @@
-name: Extract Boot Image Info and Upload
+name: Extract Boot Image Info and Upload to Bashupload
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
-  extract-boot-info:
+  extract_and_upload:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y git python3
-
-      - name: Clone Android Image Kitchen
-        run: git clone https://github.com/osm0sis/Android-Image-Kitchen.git
-
-      - name: Extract Boot Image Info
-        run: |
-          cd Android-Image-Kitchen
-          wget -O boot.img https://s3.ap-south-1.amazonaws.com/blob-ap-south-1-ukyez4/sara/be/bea5/bea54e18-cc6f-4049-9cc9-2455af366f1d.bin?response-content-disposition=attachment%3B%20filename%3D%22boot.img%22&response-content-type=&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=${{ secrets.AWS_CREDENTIALS }}&X-Amz-Date=${{ github.event.head_commit.timestamp }}&X-Amz-SignedHeaders=host&X-Amz-Expires=1800&X-Amz-Signature=${{ secrets.AWS_SIGNATURE }}
-          python3 unpackimg.py boot.img
-
-      - name: Upload Boot Image Info to Bashupload
-        run: |
-          cd Android-Image-Kitchen
-          cat split_img/boot.img-zImage | gzip -c | curl -T - https://bashupload.com/$(date +%s)_boot_info.gz
+    - name: Checkout the code
+      uses: actions/checkout@v2
+      
+    - name: Install required packages
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y simg2img curl jq
+        
+    - name: Extract boot.img information
+      run: |
+        mkdir output
+        curl -L https://s3.ap-south-1.amazonaws.com/blob-ap-south-1-ukyez4/sara/49/4917/4917728e-8854-46b6-a273-002a630a3642.bin?response-content-disposition=attachment%3B%20filename%3D%22boot.img%22&response-content-type=&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIA4DM2EY46SOWUMUP4%2F20230409%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Date=20230409T074047Z&X-Amz-SignedHeaders=host&X-Amz-Expires=1800&X-Amz-Signature=d62157737c1443ab3e827969d9db6ae075e2790ed0ee3ddbcb815be5ae6695bf -o boot.img
+        simg2img boot.img output/boot.img.raw
+        unpackbootimg -i output/boot.img.raw -o output/
+        rm output/boot.img.raw
+        
+    - name: Upload boot image info to Bashupload
+      run: |
+        cd output
+        zip -r boot_info.zip .
+        curl -s -F "file=@boot_info.zip" https://bashupload.com/upload/hash
+      env:
+        BOOT_IMG_URL: ${{ env.BOOT_IMG_URL }}
