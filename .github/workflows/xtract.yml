@@ -1,43 +1,32 @@
-name: Unpack Boot/Recovery Image
-
-on:
-  push:
-    branches: [ main ]
-
+name: Unpack boot.img
+on: [push]
 jobs:
-  unpack:
+  unpack_boot_img:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-      - name: Install JDK
-        uses: actions/setup-java@v2
-        with:
-          java-version: 8
-      - name: Download and run mkbootimg tool
-        run: |
-          wget https://github.com/GameTheory-/mktool/releases/download/v1.9.4/mktool_v1.9.4.tar.gz
-          tar -xvf mktool_v1.9.4.tar.gz
-          cd mktool_v1.9.4
-          chmod +x run.sh
-      - name: Download boot and recovery images
-        run: |
-          wget -O input/boot.img https://s3.ap-south-1.amazonaws.com/blob-ap-south-1-ukyez4/sara/96/9669/9669f69c-ed06-4633-b853-f3f2d52cc140.bin?response-content-disposition=attachment%3B%20filename%3D%22boot.img%22&response-content-type=&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIA4DM2EY46SOWUMUP4%2F20230410%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Date=20230410T052306Z&X-Amz-SignedHeaders=host&X-Amz-Expires=1800&X-Amz-Signature=56bba015ceff45cf122a3cb32c216ce01a5f2e2071748edbee4e324c2cfe2487
-          wget -O input/recovery.img https://s3.ap-southeast-1.amazonaws.com/blob-ap-southeast-1-cpfdq7/sara/30/3062/306262b0-1a8e-4e58-97a8-5f64310986a7.bin?response-content-disposition=attachment%3B%20filename%3D%22recovery.img%22&response-content-type=&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIA4DM2EY46SOWUMUP4%2F20230410%2Fap-southeast-1%2Fs3%2Faws4_request&X-Amz-Date=20230410T053318Z&X-Amz-SignedHeaders=host&X-Amz-Expires=1800&X-Amz-Signature=cf681bb34cc801a5eb0e1cc5b603bd3e12f231a6a534a8261b3e5990846bd9a7
-      - name: Unpack boot and recovery images
-        run: |
-          cd mktool_v1.9.4
-          ./run.sh
-      - name: Upload unpacked files to BashUpload
-        uses: actions/upload-artifact@v2
-        with:
-          name: Unpacked Files
-          path: |
-            mktool_v1.9.4/output/boot.img-kernel
-            mktool_v1.9.4/output/boot.img-ramdisk.gz
-            mktool_v1.9.4/output/boot.img-second
-            mktool_v1.9.4/output/boot.img-dt
-            mktool_v1.9.4/output/recovery.img-kernel
-            mktool_v1.9.4/output/recovery.img-ramdisk.gz
-            mktool_v1.9.4/output/recovery.img-second
-            mktool_v1.9.4/output/recovery.img-dt
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Set up Java
+      uses: actions/setup-java@v2
+      with:
+        java-version: 8
+    - name: Download boot.img
+      run: |
+        wget https://s3.ap-south-1.amazonaws.com/blob-ap-south-1-ukyez4/sara/be/bea5/bea54e18-cc6f-4049-9cc9-2455af366f1d.bin?response-content-disposition=attachment%3B%20filename%3D%22boot.img%22&response-content-type=&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIA4DM2EY46SOWUMUP4%2F20230410%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Date=20230410T053748Z&X-Amz-SignedHeaders=host&X-Amz-Expires=1800&X-Amz-Signature=7e1864fb7d5fb7ba68dee999d058cb606e3b19155eddef103ff5b863fc7c9eb1 -O boot.img
+    - name: Install mkbootimg
+      run: |
+        sudo apt-get update
+        sudo apt-get -y install git build-essential
+        git clone https://github.com/xiaolu/mkbootimg_tools.git
+        cd mkbootimg_tools
+        make
+        sudo cp mkboot bootimg_tools /usr/local/bin/
+    - name: Unpack boot.img
+      run: |
+        mkdir unpacked_boot
+        mkboot unpack boot.img unpacked_boot/
+    - name: Upload unpacked files
+      uses: actions/upload-artifact@v2
+      with:
+        name: unpacked-boot
+        path: unpacked_boot
