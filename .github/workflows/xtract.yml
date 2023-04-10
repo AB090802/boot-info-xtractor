@@ -1,34 +1,43 @@
-name: Extract Boot Image Info
+name: Unpack Boot/Recovery Image
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
-  extract_boot_info:
+  unpack:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v2
-
-      - name: Download Boot Image
+      - name: Install JDK
+        uses: actions/setup-java@v2
+        with:
+          java-version: 8
+      - name: Download and run mkbootimg tool
         run: |
-          wget -O boot.img ${{ https://s3.ap-south-1.amazonaws.com/blob-ap-south-1-ukyez4/sara/49/4917/4917728e-8854-46b6-a273-002a630a3642.bin?response-content-disposition=attachment%3B%20filename%3D%22boot.img%22&response-content-type=&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIA4DM2EY46SOWUMUP4%2F20230409%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Date=20230409T074047Z&X-Amz-SignedHeaders=host&X-Amz-Expires=1800&X-Amz-Signature=d62157737c1443ab3e827969d9db6ae075e2790ed0ee3ddbcb815be5ae6695bf }}
-          ls -lah boot.img
-
-      - name: Install simg2img tool
+          wget https://github.com/GameTheory-/mktool/releases/download/v1.9.4/mktool_v1.9.4.tar.gz
+          tar -xvf mktool_v1.9.4.tar.gz
+          cd mktool_v1.9.4
+          chmod +x run.sh
+      - name: Download boot and recovery images
         run: |
-          sudo apt update
-          sudo apt install -y android-tools-fsutils
-
-      - name: Extract Boot Image Info
+          wget -O input/boot.img https://s3.ap-south-1.amazonaws.com/blob-ap-south-1-ukyez4/sara/96/9669/9669f69c-ed06-4633-b853-f3f2d52cc140.bin?response-content-disposition=attachment%3B%20filename%3D%22boot.img%22&response-content-type=&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIA4DM2EY46SOWUMUP4%2F20230410%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Date=20230410T052306Z&X-Amz-SignedHeaders=host&X-Amz-Expires=1800&X-Amz-Signature=56bba015ceff45cf122a3cb32c216ce01a5f2e2071748edbee4e324c2cfe2487
+          wget -O input/recovery.img https://s3.ap-southeast-1.amazonaws.com/blob-ap-southeast-1-cpfdq7/sara/30/3062/306262b0-1a8e-4e58-97a8-5f64310986a7.bin?response-content-disposition=attachment%3B%20filename%3D%22recovery.img%22&response-content-type=&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIA4DM2EY46SOWUMUP4%2F20230410%2Fap-southeast-1%2Fs3%2Faws4_request&X-Amz-Date=20230410T053318Z&X-Amz-SignedHeaders=host&X-Amz-Expires=1800&X-Amz-Signature=cf681bb34cc801a5eb0e1cc5b603bd3e12f231a6a534a8261b3e5990846bd9a7
+      - name: Unpack boot and recovery images
         run: |
-          simg2img boot.img boot_raw.img
-          file boot_raw.img
-          strings -n 10 boot_raw.img
-
-      - name: Upload Info to Bashupload
-        run: |
-          response=$(curl --silent --show-error --upload-file boot_raw.img https://bashupload.com)
-          echo "Boot Image Info: https://bashupload.com$response"
+          cd mktool_v1.9.4
+          ./run.sh
+      - name: Upload unpacked files to BashUpload
+        uses: actions/upload-artifact@v2
+        with:
+          name: Unpacked Files
+          path: |
+            mktool_v1.9.4/output/boot.img-kernel
+            mktool_v1.9.4/output/boot.img-ramdisk.gz
+            mktool_v1.9.4/output/boot.img-second
+            mktool_v1.9.4/output/boot.img-dt
+            mktool_v1.9.4/output/recovery.img-kernel
+            mktool_v1.9.4/output/recovery.img-ramdisk.gz
+            mktool_v1.9.4/output/recovery.img-second
+            mktool_v1.9.4/output/recovery.img-dt
